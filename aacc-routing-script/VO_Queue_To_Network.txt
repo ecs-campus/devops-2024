@@ -1,0 +1,52 @@
+/* VO_Queue_To_Network */
+
+/* IF NOT OUT OF SERVICE VO_SKILLSET THEN */
+	SECTION loop_for_count
+	IF AGE OF CALL > 1800 THEN /*Exception Handling : Over 30 muniutes */
+		GIVE RAN 21
+		DISCONNECT
+	END IF
+
+
+
+	ASSIGN (loop_count + 1) TO loop_count
+
+	QUEUE TO NETWORK SKILLSET VO_SKILLSET WITH PRIORITY contact_priority
+	WAIT 2
+	GIVE RAN 1
+
+	
+	IF (NOT QUEUE OR OUT OF SRVICE VO_SKILLSET) THEN
+		GIVE RAN 21
+		EXECUTE loop_for_count
+	END IF
+ 
+	IF (loop_count = 20) THEN
+		REMOVE FROM NETWORK SKILLSET VO_SKILLSET
+		GIVE RAN 21
+		DISCONNECT
+	END IF
+	
+	IF (loop_count = 4 or loop_count = 8 or loop_count = 12 or loop_count = 16) THEN
+		SECTION loop_for_wrongdigit
+		IF AGE OF CALL > 1800 THEN  /*Exception Handling : No retrun values from customer during 30 muniutes */
+			GIVE RAN 21
+			DISCONNECT
+		END IF
+
+		GIVE IVR INTERRUPTIBLE
+		SERVICE URI serviceuri
+		WITH VXML TREATMENT voicexml
+		PARAMETERS prompttoplay, notypeahead, numberofdigits, interdigittimeout
+		RETURNS digitcheck
+
+		WHERE digitcheck EQUALS
+			VALUE 1 :
+				EXECUTE loop_for_count /* Execute this section when the digit collected from customer is 1 */
+			DEFAULT : 
+				GIVE RAN 11
+				EXECUTE loop_for_wrongdigit /* Execute this section when the digit collected from customer is not 1 */
+		END WHERE
+	END IF
+	EXECUTE loop_for_count /* Execute this section when GIVE IVR INTERRUPTOBLE command line is ignored */
+/*END IF*/
